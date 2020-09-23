@@ -1,0 +1,156 @@
+<!-- Sample Datbase Schema for SQLGenerator demo -->
+
+
+<Output modSampleSQL.bas>
+
+<Option vb6 Clear DeleteFrom Insert RecordCount UpdateInto>
+	
+<Table Customer>
+	lngCustomerID		Long AutoKey
+	strName			String(50) Index
+	strAddress1		String(30)
+	strAddress2		String(30)
+	strCity			String(30)
+	strState		String(2)
+	strZip			String(10)
+</Table>
+
+<Table Order>
+	lngOrderID		Long AutoKey
+	lngCustomerID		Long Index
+	strOrderNo		String(20) Index
+	datOrder		Date Index
+	strSalesmanID		String(10) Index
+	blnShipped		Boolean
+</Table>
+
+<Table OrderDetail>
+	lngOrderDetailID	Long AutoKey
+	lngOrderID		Long Index
+	lngCustomerID		Long Index
+	strItemID		String(20)
+	sngQuantity		Single
+</Table>
+
+<Table System NoAdd NoDelete>
+	blnOption1		Boolean
+	blnOption2		Boolean
+	blnOption3		Boolean
+	blnOption4		Boolean
+	blnOption5		Boolean
+	blnOption6		Boolean
+</Table>
+
+<Table Version NoWrite>
+	strSystemName		String(20)
+	strVersion		String(10)
+	intSchemaVersion	Integer
+</Table>
+
+
+<!-- Delete Queries -->
+
+<QueryDelete Customer ID>
+	lngCustomerID = %
+</Query>
+
+<QueryDelete Customer Name>
+	strName = %
+</Query>
+
+<QueryDelete Order ID>
+	lngOrderID = %
+</Query>
+
+<QueryDelete Order CustID>
+	lngCustomerID = %
+</Query>
+
+<QueryDelete OrderDetail ID>
+	lngOrderDetailID = %
+</Query>
+
+<QueryDelete OrderDetail CustID>
+	lngCustomerID = %
+</Query>
+
+<QueryDelete OrderDetail OrderID>
+	lngOrderID = %
+</Query>
+
+
+<!-- Select Queries -->
+
+<QuerySelect Customer ID>
+	lngCustomerID = %
+</Query>
+
+<QuerySelect Customer Name>
+	strName LIKE %
+	ORDER BY
+	strName
+</Query>
+
+<QuerySelect Order ID>
+	lngOrderID = %
+</Query>
+
+<QuerySelect Order CustID>
+	lngCustomerID = %
+	ORDER BY
+	strOrderNo
+</Query>
+
+<QuerySelect Order Date>
+	datOrder > %
+	ORDER BY
+	datOrder DESC
+	strOrderNo
+</Query>
+
+<QuerySelect Order Salesman>
+	strSalesmanID = %
+	ORDER BY
+	lngCustomerID
+	strOrderNo
+</Query>
+
+<QuerySelect OrderDetail ID>
+	lngOrderDetailID = %
+</Query>
+
+<QuerySelect OrderDetail CustID>
+	lngCustomerID = %
+	ORDER BY
+	lngOrderID
+	strItemID
+</Query>
+
+<QuerySelect OrderDetail OrderID>
+	lngOrderID = %
+	ORDER BY
+	strItemID
+</Query>
+
+<!-- Set Queries -->
+
+<QuerySet Order Shipped>
+	lngOrderID = %
+	SET
+	blnShipped = %
+</Query>
+
+
+<!-- Update Queries -->
+
+<QueryUpdate Customer ID>
+	lngCustomerID = %
+</Query>
+
+<QueryUpdate Order ID>
+	lngOrderID = %
+</Query>
+
+<QueryUpdate OrderDetail ID>
+	lngOrderDetailID = %
+</Query>
