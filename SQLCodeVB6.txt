@@ -1,0 +1,2027 @@
+Attribute VB_Name = "[{OutputName}]"
+Option Explicit
+Option Base 0
+'
+'
+'   SQL Database Access Routines
+'
+'
+'   By:  Richard B. Sorensen
+'
+'
+'   This code module was automatically generated from a schema definition.
+'   DO NOT MODIFY THIS CODE, and DO NOT ADD LINES OR ROUTINES to this module.
+'   The generation process will wipe out all changes the next time it is run.
+'
+'
+
+'Types ---------------------------
+
+'Build SQL statement record
+Private Type typSQLBuild
+    blnActive As Boolean
+    intBuildType As Integer
+    strBuildField As String
+    strBuildValue As String
+    strDatabaseSystem As String
+    strEscapeQuote As String
+End Type
+
+'Connection record
+Public Type typSQLConnection
+    blnDSN As Boolean
+    intCommandTimeout As Integer
+    intConnectTimeout As Integer
+    intOperationType As Integer
+    lngCursorDefault As Long
+    lngCursorLocation As Long
+    objConnection As ADODB.Connection
+    objCommand As ADODB.Command
+    strConnectionName As String
+    strConnectString As String
+    strConnectErrorString As String
+    strDatabase As String
+    strDatabasePassword As String
+    strDatabaseSystem As String
+    strEscapeQuote As String
+    strFileName As String
+    strPassword As String
+    strRecordSetParams As String
+    strServer As String
+    strServerPrefix As String
+    strUserName As String
+End Type
+<Option>CompactRepair
+
+Private Type typPROCESS_INFORMATION
+    hProcess As Long
+    hThread As Long
+    dwProcessID As Long
+    dwThreadID As Long
+End Type
+
+Private Type typSTARTUPINFO
+    cb As Long
+    lpReserved As String
+    lpDesktop As String
+    lpTitle As String
+    dwX As Long
+    dwY As Long
+    dwXSize As Long
+    dwYSize As Long
+    dwXCountChars As Long
+    dwYCountChars As Long
+    dwFillAttribute As Long
+    dwFlags As Long
+    wShowWindow As Integer
+    cbReserved2 As Integer
+    lpReserved2 As Long
+    hStdInput As Long
+    hStdOutput As Long
+    hStdError As Long
+End Type
+</Option>
+
+'Enumerations ---------------------
+
+Public Enum enumSQLBuildType
+    CreateTable = 1
+    InsertTable = 2
+    UpdateTable = 3
+End Enum
+
+Public Enum enumSQLOperationType
+    ConnectOperation = 0
+    ReadOperation = 1
+    WriteOperation = 2
+    CriticalWriteOperation = 3
+End Enum
+
+'Constants ------------------------
+
+'Callback conditional
+#Const enumSQLCallback = False
+
+'Database system types
+Public Const enumSQLDatabaseAccess As String = "access"
+Public Const enumSQLDatabaseDB2 As String = "db2"
+Public Const enumSQLDatabaseInformix As String = "informix"
+Public Const enumSQLDatabaseIngres As String = "ingres"
+Public Const enumSQLDatabaseMySql As String = "mysql"
+Public Const enumSQLDatabaseOracle As String = "oracle"
+Public Const enumSQLDatabasePostgresQL As String = "postgresql"
+Public Const enumSQLDatabaseProgress As String = "progress"
+Public Const enumSQLDatabaseSqlServer As String = "sqlserver"
+Public Const enumSQLDatabaseSybase As String = "sybase"
+
+'Recordset parameters
+Public Const enumSQLRecordsetBatchOptimistic As String = "batchoptimistic"
+Public Const enumSQLRecordsetDynamic As String = "dynamic"
+Public Const enumSQLRecordsetForwardOnly As String = "forwardonly"
+Public Const enumSQLRecordsetKeyset As String = "keyset"
+Public Const enumSQLRecordsetOptimistic As String = "optimistic"
+Public Const enumSQLRecordsetPessimistic As String = "pessimistic"
+Public Const enumSQLRecordsetReadOnly As String = "readonly"
+Public Const enumSQLRecordsetStatic As String = "static"
+Public Const enumSQLRecordsetStoredProc As String = "storedproc"
+Public Const enumSQLRecordsetTable As String = "table"
+
+'Other constants
+Public Const enumSQLErrorLogFile As String = "SQLErrorLog.txt"
+
+'SQL error codes
+Private Const enumSQLErrorConnectFail As Long = 3709
+Private Const enumSQLErrorConnectFailAccess As Long = -2147217865
+Private Const enumSQLErrorConnectFailPostgres As Long = -2147467259
+Private Const enumSQLErrorNetwork As Long = 3043
+Private Const enumSQLErrorNullValue As Long = 94
+Private Const enumSQLErrorMaxRetries As Integer = 3
+Private Const enumSQLErrorUpdateDupKey As Long = 7
+
+'Table names
+<Table>
+Public Const enumTableNameExt[{TableNameInternal}] As String = "[{TableNameExternal}]"
+Public Const enumTableNameInt[{TableNameInternal}] As String = "[{TableNameInternal}]"
+</Table>
+
+'Declarations -----------------------------
+
+<Option>CompactRepair
+Private Declare Function CloseHandle Lib "kernel32" _
+    (ByVal hObject As Long) As Long
+Private Declare Function CreateProcess Lib "kernel32" Alias "CreateProcessA" _
+    (ByVal lpApplicationName As Long, _
+    ByVal lpCommandLine As String, _
+    ByVal lpProcessAttributes As Long, _
+    ByVal lpThreadAttributes As Long, _
+    ByVal bInheritHandles As Long, _
+    ByVal dwCreationFlags As Long, _
+    ByVal lpEnvironment As Long, _
+    ByVal lpCurrentDirectory As Long, _
+    lpStartupInfo As typSTARTUPINFO, _
+    lpProcessInformation As typPROCESS_INFORMATION) As Long
+Private Declare Function GetFileAttributes Lib "kernel32" Alias "GetFileAttributesA" _
+    (ByVal lpFileName As String) As Long
+Private Declare Function WaitForSingleObject Lib "kernel32" _
+    (ByVal hHandle As Long, _
+    ByVal dwMilliseconds As Long) As Long
+</Option>
+Private Declare Sub Sleep Lib "kernel32" _
+    (ByVal lngMilliseconds As Long)
+
+'Data --------------------------------------
+
+'Connection records
+<Connection>
+Public g_recConnection[{ConnectionName}] As typSQLConnection
+</Connection>
+
+'Miscellaneous module-level variables
+Private m_blnErrorDisplay As Boolean
+Private m_blnErrorLog As Boolean
+Private m_lngErrorCount As Long
+Private m_recBuild(0 To 2) As typSQLBuild
+Private m_strError As String
+Private m_strErrorLogFile As String
+
+'
+'SQL Table Definitions   Automatically Generated  -  DO NOT MODIFY
+'
+<Table>
+Public Type typTable[{TableNameInternal}]
+    <Field>
+    [{FieldNameInternal}] As [{FieldType}]
+    </Field>
+End Type
+<Buffer>
+Public g_rec[{TableNameInternal}][{TableBufferID}] As typTable[{TableNameInternal}]
+Public g_objRecordset[{TableNameInternal}][{TableBufferID}] As ADODB.Recordset
+</Buffer>
+<Option>Parameter
+Public g_objCommand[{TableNameInternal}] As ADODB.Command
+<Field>
+Private objParam[{TableNameInternal}][{FieldNameInternal}] As ADODB.Parameter
+</Field>
+</Option>
+
+</Table>
+'
+'SQL Public Connection & Transaction Routines   Automatically Generated  -  DO NOT MODIFY
+'
+<Connection>
+<Option>Transaction
+Public Function SQLBeginTrans[{ConnectionName}]() As Boolean
+'
+'   Begins a transaction for this connection
+'
+    On Error Resume Next
+    Do
+        With g_recConnection[{ConnectionName}]
+            .intOperationType = enumSQLOperationType.ReadOperation
+            .objConnection.BeginTrans
+            If Err.Number = 0 Then
+                SQLBeginTrans[{ConnectionName}] = True
+                Exit Do
+            ElseIf SQLErrorProcess(g_recConnection[{ConnectionName}], "SQLBeginTrans", "Connection [{ConnectionName}]", "", "", True) Then
+                Exit Do
+            End If
+        End With
+    Loop
+End Function
+</Option>
+
+Public Sub SQLCloseConnection[{ConnectionName}]()
+'
+'   Closes a SQL Connection
+'
+    On Error Resume Next
+    With g_recConnection[{ConnectionName}]
+        .intOperationType = enumSQLOperationType.ConnectOperation
+        .objConnection.Close
+        Set .objConnection = Nothing
+    End With
+    Err.Clear
+End Sub
+
+Public Function SQLCommand[{ConnectionName}](strSQLStatement As String, Optional strParameters As String = "", Optional blnStoredProcedure As Boolean = False, Optional intOperationType As Integer) As Boolean
+'
+'   Executes an SQL command for the connection
+'
+'   Parameters:
+'       strSQLStatement - The SQL statement to be run
+'       strParameters - an optional parameter string, if parameters will be passed
+'       blnStoredProcedure - an optional flag indicating that the command will run a stored procedure
+'       intOperationType - an optional value indicating the type of operation (from enumSQLOperationType)
+'   
+    SQLCommand[{ConnectionName}] = SQLExecute(g_recConnection[{ConnectionName}], "Connection [{ConnectionName}]", strSQLStatement, strParameters, blnStoredProcedure, intOperationType)
+End Function
+<Option>Transaction
+
+Public Function SQLCommitTrans[{ConnectionName}]() As Boolean
+'
+'   Commits a transaction for this connection
+'
+    On Error Resume Next
+    Do
+        With g_recConnection[{ConnectionName}]
+            .intOperationType = enumSQLOperationType.CriticalWriteOperation
+            .objConnection.CommitTrans
+            If Err.Number = 0 Then
+                SQLCommitTrans[{ConnectionName}] = True
+                Exit Do
+            ElseIf SQLErrorProcess(g_recConnection[{ConnectionName}], "SQLCommitTrans", "Connection [{ConnectionName}]", "", "", True) Then
+                Exit Do
+            End If
+        End With
+    Loop
+End Function
+</Option>
+
+Public Function SQLOpenConnection[{ConnectionName}](strDSN As String, Optional strConnectString As String, Optional strServer As String, Optional strDatabase As String, Optional strDatabasePassword As String, Optional strUserName As String, Optional strPassword As String, Optional strDatabaseSystem As String = "", Optional strRecordSetParams As String = "", Optional intConnectTimeout As Integer = 15, Optional intCommandTimeout As Integer = 15, Optional blnCursorClient As Boolean = False) As Boolean
+'
+'   Opens a SQL Connection
+'
+'   Parameters:
+'       strDSN - the DSN string if the connection is being opened with a Data Source Name (may be blank)
+'       strConnectString - the connect string used to open the connection (may be blank and may include replacement string values - see the SQLOpen routine)
+'       strServer - optional name of the database server
+'       strDatabase - optional name of the database
+'       strDatabasePassword - optional database password
+'       strUserName - optional username
+'       strPassword - optional username password
+'       strDatabaseSystem - optional database system being accessed (from enumSQLDatabase enumerations)
+'       strRecordSetParams - optional default recordset parameters separated by spaces (e.g., "forwardonly" - from enumSQLRecordset enumerations)
+'       intConnectTimeout - optional connect timeout value
+'       intCommandTimeout - optional command timeout value
+'       blnCursorClient - optional database cursor location flag (default is server-side cursor)
+'
+    On Error Resume Next
+    With g_recConnection[{ConnectionName}]
+        .intOperationType = enumSQLOperationType.ConnectOperation
+        .strConnectionName = "[{ConnectionName}]"
+    End With
+    SQLOpenConnection[{ConnectionName}] = SQLOpen(g_recConnection[{ConnectionName}], strDSN, strConnectString, strServer, strDatabase, strDatabasePassword, strUserName, strPassword, strDatabaseSystem, strRecordSetParams, intConnectTimeout, intCommandTimeout, blnCursorClient)
+End Function
+<Option>Transaction
+
+Public Function SQLRollbackTrans[{ConnectionName}]() As Boolean
+'
+'   Rolls a transaction back for this connection
+'
+    On Error Resume Next
+    Do
+        With g_recConnection[{ConnectionName}]
+            .intOperationType = enumSQLOperationType.CriticalWriteOperation
+            .objConnection.RollbackTrans
+            If Err.Number = 0 Then
+                SQLRollbackTrans[{ConnectionName}] = True
+                Exit Do
+            ElseIf SQLErrorProcess(g_recConnection[{ConnectionName}], "SQLRollbackTrans", "Connection [{ConnectionName}]", "", "", True) Then
+                Exit Do
+            End If
+        End With
+    Loop
+End Function
+</Option>
+</Connection>
+
+'
+'SQL Public Data Access Routines   Automatically Generated  -  DO NOT MODIFY
+'
+<Option>AddNew
+Public Function SQLAddNew(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String) As Boolean
+'
+'   Adds a new record using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       objRecordset - the recordset object to be used
+'       strTableNameInternal - the internal name of the SQL table
+'
+    On Error Resume Next
+    recConnection.intOperationType = enumSQLOperationType.WriteOperation
+    objRecordset.AddNew
+    If Err.Number = 0 Then
+        SQLAddNew = True
+    Else
+        Call SQLErrorProcess(recConnection, "SQLAddNew", strTableNameInternal, "")
+    End If
+End Function
+
+</Option>
+Public Sub SQLCloseRecordSet(objRecordset As ADODB.Recordset)
+'
+'   Closes a recordset
+'
+'   Parameters:
+'       objRecordset - the recordset object to be used
+'
+    On Error Resume Next
+    objRecordset.Close
+    Set objRecordset = Nothing
+    Err.Clear
+End Sub
+
+<Option>CompactRepair
+Public Function SQLCompactRepair(recConnection As typSQLConnection, strProgramPath As String) As Boolean
+'
+'   Compacts and repairs an Access Jet database
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strProgramPath - the path where the jetcomp.exe repair program is located
+'
+    Const enumJetCompactRepair As String = "jetcomp.exe"
+    Const enumJetCommandString As String = "-src:<dbold> -dest:<dbnew> -u<uid> -p<pwd> -w<dbpwd>"
+    Const enumDatabaseNew As String = "<dbnew>"
+    Const enumDatabaseOld As String = "<dbold>"
+    Const enumDatabasePassword As String = "<dbpwd>"
+    Const enumPasswordText As String = "<pwd>"
+    Const enumUserNameText As String = "<uid>"
+    
+    Dim intX As Integer
+    Dim recProcessInfo As typPROCESS_INFORMATION
+    Dim recStartupInfo As typSTARTUPINFO
+    Dim strError As String
+    Dim strFileName As String
+    Dim strPath As String
+    Dim strSource As String
+    Dim strString As String
+    Dim strTarget As String
+    
+    On Error Resume Next
+    With recConnection
+        If .strDatabaseSystem <> enumSQLDatabaseAccess _
+            Or .strFileName = "" Then
+            strError = "A compact & repair operation was requested on a non-Access database"
+            Call SQLErrorProcess(recConnection, "SQLCompactRepair", .strFileName, strError)
+            Exit Function
+        End If
+        If GetFileAttributes(strProgramPath & enumJetCompactRepair) < 0 then
+            strError = "The Jet compact & repair utility program (""" & enumJetCompactRepair & """) could not be found."
+            Call SQLErrorProcess(recConnection, "SQLCompactRepair", .strFileName, strError)
+            Exit Function
+        End If
+        .intOperationType = enumSQLOperationType.CriticalWriteOperation
+        intX = InStrRev(.strFileName, "\")
+        If intX > 0 Then
+            strPath = Left$(.strFileName, intX)
+            strFileName = Mid$(.strFileName, intX + 1)
+        Else
+            strPath = ""
+            strFileName = .strFileName
+        End If
+        intX = InStrRev(strFileName, ".")
+        If intX > 0 Then
+            strTarget = Left$(strFileName, intX - 1)
+        Else
+            strTarget = strFileName
+        End If
+        strTarget = strTarget & Format$(Now, "yyyymmdd") & ".bak"
+        Err.Clear
+        Name (.strFileName) As (strPath & strTarget)
+        If Err.Number <> 0 Then
+            strError = "The database file could not be renamed prior to performing a compact & repair operation." & vbCrLf & vbCrLf & _
+                "It is is probably in use by another user, and the database was not altered."
+            Call SQLErrorProcess(recConnection, "SQLCompactRepair", .strFileName, strError)
+            Exit Function
+        End If
+        <Option>Not VBA
+        Screen.MousePointer = vbHourglass
+        </Option>
+        strString = strProgramPath & enumJetCompactRepair & " " & enumJetCommandString
+	strString = Replace(strString, enumDatabaseOld, strTarget, , , vbTextCompare)
+	strString = Replace(strString, enumDatabaseNew, .strFileName, , , vbTextCompare)
+	strString = Replace(strString, enumDatabasePassword, .strDatabasePassword, , , vbTextCompare)
+	strString = Replace(strString, enumUserNameText, .strUserName, , , vbTextCompare)
+	strString = Replace(strString, enumPasswordText, .strPassword, , , vbTextCompare)
+        With recStartupInfo
+            .cb = Len(recStartupInfo)
+            .dwFlags = 1
+            .wShowWindow = vbHide
+        End With
+        If CreateProcess(0&, strString, 0&, 0&, 1&, &H20&, 0&, 0&, recStartupInfo, recProcessInfo) = 0 Then
+            strError = "The Jet compact & repair utility program (""" & enumJetCompactRepair & """) could not be run."
+            Call SQLErrorProcess(recConnection, "SQLCompactRepair", .strFileName, strError)
+            Kill (.strFileName)
+            Name (strPath & strTarget) As (.strFileName)
+            Err.Clear
+        Else
+            Call WaitForSingleObject(recProcessInfo.hProcess, -1&)
+            Call CloseHandle(recProcessInfo.hProcess)
+            SQLCompactRepair = True
+        End If
+        <Option>Not VBA
+        Screen.MousePointer = vbDefault
+        </Option>
+    End With
+    Err.Clear
+End Function
+
+</Option>
+Public Function SQLConnect(recConnection As typSQLConnection, Optional blnInitialConnect As Boolean = False, Optional blnSkipErrorHandling As Boolean = False) As Boolean
+'
+'   Performs the actual SQL connect/reconnect logic
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       blnInitialConnect - an optional flag indicating if this is the initial or a reconnect operation
+'       blnSkipErrorHandling - an optional flag indicating that error displays will be suppressed for this connect attempt
+'
+    Dim blnMouseHourglass As Boolean
+    Dim blnResult As Boolean
+    Dim intRetryCount As Integer
+    Dim strConnection As String
+
+    On Error Resume Next
+    With recConnection
+        <Option>Not VBA
+        If Screen.Mousepointer <> vbHourglass Then
+            blnMouseHourglass = True
+            Screen.Mousepointer = vbHourglass
+        End If
+        </Option>
+        .objConnection.Close
+        Set .objConnection = Nothing
+        Err.Clear
+        Set .objConnection = New ADODB.Connection
+        .objConnection.CommandTimeout = .intCommandTimeout
+        .objConnection.ConnectionTimeout = .intConnectTimeout
+        .objConnection.Errors.Clear
+        .objConnection.Open .strConnectString
+        .intOperationType = enumSQLOperationType.ConnectOperation
+        If Err.Number = 0 Then
+            Set .objCommand = Nothing
+            Set .objCommand = New ADODB.Command
+            Set .objCommand.ActiveConnection = .objConnection
+            <Option>Parameter
+            Select Case .strConnectionName
+                <Connection>
+                Case Is = "[{ConnectionName}]"
+                    <TableConnection>
+                    Set g_objCommand[{TableNameInternal}] = Nothing
+                    Set g_objCommand[{TableNameInternal}] = New ADODB.Command
+                    Set g_objCommand[{TableNameInternal}].ActiveConnection = .objConnection
+                    <Field>
+                    <FieldNotAutoKey>
+                    Set objParam[{TableNameInternal}][{FieldNameInternal}] = Nothing
+                    Set objParam[{TableNameInternal}][{FieldNameInternal}] = New ADODB.Parameter
+                    Set objParam[{TableNameInternal}][{FieldNameInternal}] = g_objCommand[{TableNameInternal}].CreateParameter("[{FieldNameExternal}]", [{FieldADOType}], True, [{FieldLength}])
+                    g_objCommand[{TableNameInternal}].Parameters.Append objParam[{TableNameInternal}][{FieldNameInternal}]
+                    </FieldNotAutoKey>
+                    </Field>
+                    </TableConnection>
+                </Connection>
+            End Select
+            </Option>
+            Err.Clear
+            blnResult = True
+        ElseIf Not blnSkipErrorHandling Then
+            Call SQLErrorProcess(recConnection, IIf(blnInitialConnect, "SQLConnectInitial", "SQLConnect"), "", .strConnectErrorString)
+        End If
+        <Option>Not VBA
+        If blnMouseHourglass Then
+            Screen.Mousepointer = vbDefault
+        End If
+        </Option>
+    End With
+    SQLConnect = blnResult
+End Function
+
+Public Function SQLCreateTable(recConnection As typSQLConnection, strTableNameInternal As String, strTableNameExternal As String, strSQLStatement As String) As Boolean
+'
+'   Creates a table
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       strTableNameExternal - the external name of the SQL table
+'       strSQLStatement - the SQL create statement
+'
+    Dim intX As Integer
+    Dim strLine() As String
+    Dim strStatement As String
+
+    On Error Resume Next
+    If strSQLStatement <> "" Then
+        strLine = Split(strSQLStatement, "|")
+        strStatement = "CREATE TABLE " & strTableNameExternal & " (" & strLine(0) & ");"
+        If SQLExecute(recConnection, strTableNameInternal, strStatement) Then
+            For intX = 1 To UBound(strLine)
+                If Left$(strLine(intX), 1) = "*" Then
+                    strStatement = "CREATE UNIQUE INDEX "
+                    strLine(intX) = Mid$(strLine(intX), 2)
+                Else
+                    strStatement = "CREATE INDEX "
+                End If
+                strStatement = strStatement & strLine(intX) & " ON " & strTableNameExternal & " (" & strLine(intX) & ");"
+                Call SQLExecute(recConnection, strTableNameInternal, strStatement, , , enumSQLOperationType.CriticalWriteOperation)
+            Next
+            SQLCreateTable = True
+        End If
+    End If
+    Err.Clear
+End Function
+
+<Option>Delete
+Public Function SQLDelete(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+'
+'   Deletes a record using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       objRecordset - the recordset object to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       blnCriticalWrite - an optional flag indicating that is a critical write operation
+'
+    On Error Resume Next
+    recConnection.intOperationType = IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation)
+    objRecordset.Delete
+    If Err.Number = 0 Then
+        SQLDelete = True
+    Else
+        Call SQLErrorProcess(recConnection, "SQLDelete", strTableNameInternal, "")
+    End If
+End Function
+
+</Option>
+<Option>DeleteFrom
+Public Function SQLDeleteFrom(recConnection As typSQLConnection, strTableNameInternal As String, strTableNameExternal As String, strWhereClause As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+'
+'   Deletes a record without using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       strTableNameExternal - the external name of the SQL table
+'       strWhereClause - the SQL statment indicating the records to be deleted
+'       blnCriticalWrite - an optional flag indicating that is a critical write operation
+'
+    Dim blnResult As Boolean
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        .intOperationType = IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation)
+        strStatement = "DELETE FROM " & .strServerPrefix & strTableNameExternal
+        If strWhereClause <> "" And LCase$(Left$(Trim$(strWhereClause), 5)) <> "where" Then
+            strStatement = strStatement & " WHERE"
+        End If
+        strStatement = strStatement & " " & strWhereClause
+        Do
+            .objCommand.CommandType = adCmdText
+            .objCommand.CommandText = strStatement
+            .objCommand.Execute
+            If Err.Number = 0 Then
+                blnResult = True
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLDeleteFrom", strTableNameInternal, strStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLDeleteFrom = blnResult
+End Function
+
+</Option>
+Public Function SQLExecute(recConnection As typSQLConnection, strTableNameInternal As String, strSQLStatement As String, Optional strParameters As String = "", Optional blnStoredProcedure As Boolean = False, Optional intOperationType As Integer = 0) As Boolean
+'
+'   Executes an SQL command
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strTableNameInternal - the internal name of the SQL table being used
+'       strSQLStatement - The SQL statement to be run
+'       strParameters - an optional parameter string, if parameters will be passed
+'       blnStoredProcedure - an optional flag indicating that the command will run a stored procedure
+'       intOperationType - an optional value indicating the type of operation (from enumSQLOperationType)
+'   
+    Dim blnResult As Boolean
+
+    On Error Resume Next
+    With recConnection
+        .objConnection.Errors.Clear
+        .intOperationType = intOperationType
+    End With
+    With recConnection.objCommand
+        If blnStoredProcedure Then
+            .CommandType = adCmdStoredProc
+        Else
+            .CommandType = adCmdText
+        End If
+        .CommandText = strSQLStatement
+        Do
+            If strParameters <> "" Then
+                .Execute , strParameters
+            Else
+                .Execute
+            End If
+            If Err.Number = 0 Then
+                blnResult = True
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLExecute", strTableNameInternal, strSQLStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLExecute = blnResult
+End Function
+
+Public Function SQLGetErrorCount() As Long
+'
+'   Returns the SQL error count
+'
+    SQLGetErrorCount = m_lngErrorCount
+End Function
+
+Public Function SQLGetErrorLast() As String
+'
+'   Returns the error message on the last function called (if any)
+'
+    SQLGetErrorLast = m_strError
+End Function
+
+Public Function SQLGetErrorLogFileName() As String
+'
+'   Returns the name of the SQL error log file
+'
+    SQLGetErrorLogFileName = m_strErrorLogFile
+End Function
+
+<Option>Insert
+Public Function SQLInsert(recConnection As typSQLConnection, strTableNameInternal As String, strTableNameExternal As String, strInsertClause As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+'
+'   Inserts a new record into a table without using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       strTableNameExternal - the external name of the SQL table
+'       strInsertClause - the SQL statment describing the insert processing
+'       blnCriticalWrite - an optional flag indicating that is a critical write operation
+'
+    Dim blnResult As Boolean
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        .intOperationType = IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation)
+        strStatement = "INSERT INTO " & .strServerPrefix & strTableNameExternal & " " & strInsertClause
+        Do
+            .objCommand.CommandType = adCmdText
+            .objCommand.CommandText = strStatement
+            .objCommand.Execute
+            If Err.Number = 0 Then
+                blnResult = True
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLInsert", strTableNameInternal, strStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLInsert = blnResult
+End Function
+
+</Option>
+Public Function SQLNext(objRecordset As ADODB.Recordset) As Boolean
+'
+'   Reads the next record in a recordset
+'
+'   Parameters:
+'       objRecordset - the recordset object to be used
+'
+    On Error Resume Next
+    objRecordset.MoveNext
+    If Err.Number <> 0 Or objRecordset.EOF Then
+        Err.Clear
+    Else
+        SQLNext = True
+    End If
+End Function
+
+<Option>Parameter
+Public Function SQLParameter(recConnection As typSQLConnection, objCommand As ADODB.Command, strTableNameInternal As String, strSQLStatement As String, Optional intOperationType As Integer = 0) As Boolean
+'
+'   Executes an SQL command with a predefined command object
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       objCommand - the command object to be used (must be preset with the appropriate values)
+'       strTableNameInternal - the internal name of the SQL table
+'       strSQLStatement - The SQL statement to be run (must be formatted correctly)
+'       intOperationType - an optional value indicating the type of operation (from enumSQLOperationType)
+'
+    Dim blnResult As Boolean
+
+    On Error Resume Next
+    recConnection.objConnection.Errors.Clear
+    With objCommand
+        .CommandType = adCmdText
+        .CommandText = strSQLStatement
+        Do
+            .Execute
+            If Err.Number = 0 Then
+                blnResult = True
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLParameter", strTableNameInternal, strSQLStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLParameter = blnResult
+End Function
+
+</Option>
+<Option>Search
+Public Function SQLSearch(objRecordset As ADODB.Recordset, strSearch As String, blnForward As Boolean, blnReposition As Boolean) As Boolean
+'
+'   Performs a search operation on an existing recordset - take care with forwardonly recordsets
+'
+'   Parameters:
+'       objRecordset - the recordset object to be used
+'       strSearch - the search string
+'       blnForward - a flag indicating the direction of the search
+'       blnReposition - a flag indicating that the cursor must be repositioned at the first or last record prior to performing the search
+'
+    Dim intRetryCount As Integer
+
+    On Error Resume Next
+    If blnReposition Then
+        If blnForward Then
+            objRecordset.MoveFirst
+        Else
+            objRecordset.MoveLast
+        End If
+    End If
+    If Err.Number <> 0 Then
+        Err.Clear
+        Exit Function
+    End If
+    If blnReposition Then
+        objRecordset.Find strSearch, 0, adSearchForward
+    Else
+        objRecordset.Find strSearch, 0, adSearchBackward
+    End If
+    If Err.Number <> 0 Then
+        Err.Clear
+    ElseIf Not objRecordset.BOF And Not objRecordset.EOF Then
+        SQLSearch = True
+    End If
+End Function
+
+</Option>
+Public Function SQLSelect(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strTableNameExternal As String, strWhereClause As String, Optional lngTopCount As Long = 0, Optional strRecordSetParams As String = "") As Boolean
+'
+'   Performs a query and generates a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       objRecordset - the recordset object to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       strTableNameExternal - the external name of the SQL table
+'       strWhereClause - the SQL statement indicating the WHERE and ORDER BY strings
+'       lngTopCount - an optional value used to return only the first "n" results in the record set
+'       strRecordSetParams - optional recordset parameters for this SELECT separated by spaces (e.g., "readonly" - from the enumSQLRecordset enumerations).  If blank, the default connection value is used
+'
+    Dim blnResult As Boolean
+    Dim intX As Integer
+    Dim lngCursorLocation As Long
+    Dim lngCursorType As Long
+    Dim lngLockType As Long
+    Dim lngOption As Long
+    Dim strArray() As String
+    Dim strParameters As String
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        .intOperationType = enumSQLOperationType.ReadOperation
+        lngCursorLocation = .lngCursorLocation
+        lngCursorType = .lngCursorDefault
+        lngLockType = adLockOptimistic
+        lngOption = adCmdText
+        strParameters = strRecordSetParams
+        If strParameters = "" Then
+            strParameters = .strRecordSetParams
+        End If
+        If strParameters <> "" Then
+            strArray = Split(LCase$(strParameters), " ")
+            For intX = 0 To UBound(strArray)
+                Select Case Trim$(strArray(intX))
+                    Case Is = enumSQLRecordsetForwardOnly
+                        lngCursorType = adOpenForwardOnly
+                    Case Is = enumSQLRecordsetKeyset
+                        lngCursorType = adOpenKeyset
+                    Case Is = enumSQLRecordsetDynamic
+                        lngCursorType = adOpenDynamic
+                    Case Is = enumSQLRecordsetStatic
+                        lngCursorType = adOpenStatic
+                    Case Is = enumSQLRecordsetReadOnly
+                        lngLockType = adLockReadOnly
+                    Case Is = enumSQLRecordsetPessimistic
+                        lngLockType = adLockPessimistic
+                    Case Is = enumSQLRecordsetOptimistic
+                        lngLockType = adLockOptimistic
+                    Case Is = enumSQLRecordsetBatchOptimistic
+                        lngLockType = adLockBatchOptimistic
+                    Case Is = enumSQLRecordsetStoredProc
+                        lngOption = adCmdStoredProc
+                    Case Is = enumSQLRecordsetTable
+                        lngOption = adCmdTable
+                End Select
+            Next
+        End If
+        strStatement = "SELECT"
+        If lngTopCount > 0 Then
+            strStatement = strStatement & " TOP " & CStr(lngTopCount)
+        End If
+        strStatement = strStatement & " * FROM " & .strServerPrefix & strTableNameExternal
+        If strWhereClause <> "" Then
+            If LCase$(Left$(Trim$(strWhereClause), 5)) <> "where" And LCase$(Left$(Trim$(strWhereClause), 8)) <> "order by" Then
+                strStatement = strStatement & " WHERE"
+            End If
+        End If
+        strStatement = strStatement & " " & strWhereClause
+        Do
+            Set objRecordset = Nothing
+            Set objRecordset = New ADODB.RecordSet
+            objRecordset.CursorLocation = lngCursorLocation
+            objRecordset.Open strStatement, .objConnection, lngCursorType, lngLockType, lngOption
+            If Err.Number = 0 Then
+                blnResult = Not objRecordset.EOF
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLSelect", strTableNameInternal, strStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLSelect = blnResult
+End Function
+
+Public Sub SQLSetErrorHandling(blnErrorDisplay As Boolean, blnErrorLog As Boolean, Optional strLogPathName As String = "")
+'
+'   Sets the error handling characteristics
+'
+'   Parameters:
+'       blnErrorDisplay - a flag turning error displays (message boxes) on or off (errors are stilled logged)
+'       blnErrorLog - a flag indicating if errors should be logged
+'       strLogPathName - the path to be used for the error file (a blank path retains the current value)
+'
+    On Error Resume Next
+    m_blnErrorDisplay = blnErrorDisplay
+    m_blnErrorLog = blnErrorLog
+    If blnErrorLog Then
+        If strLogPathName <> "" Then
+            m_strErrorLogFile = strLogPathName & enumSQLErrorLogFile
+        End If
+    End If
+End Sub
+
+<Option>Update
+Public Function SQLUpdate(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+'
+'   Updates a record using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       objRecordset - the recordset object to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       blnCriticalWrite - an optional flag indicating that is a critical write operation
+'
+    On Error Resume Next
+    recConnection.intOperationType = IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation)
+    objRecordset.Update
+    If Err.Number = 0 Then
+        SQLUpdate = True
+    Else
+        Call SQLErrorProcess(recConnection, "SQLUpdate", strTableNameInternal, "")
+    End If
+End Function
+
+</Option>
+<Option>UpdateInto
+Public Function SQLUpdateInto(recConnection As typSQLConnection, strTableNameInternal As String, strTableNameExternal As String, strUpdateClause As String, strWhereClause As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+'
+'   Updates a record without using a recordset
+'
+'   Parameters:
+'       recConnection - the connection record to be used
+'       strTableNameInternal - the internal name of the SQL table
+'       strTableNameExternal - the external name of the SQL table
+'       strUpdateClause - the SQL SET statement
+'       strWhereClause - the SQL WHERE statement indicating the records to be updated
+'       blnCriticalWrite - an optional flag indicating that is a critical write operation
+'
+    Dim blnResult As Boolean
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        .intOperationType = IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation)
+        strStatement = "UPDATE " & .strServerPrefix & strTableNameExternal & " " & strUpdateClause
+        If strWhereClause <> "" And LCase$(Left$(Trim$(strWhereClause), 5)) <> "where" Then
+            strStatement = strStatement & " WHERE"
+        End If
+        strStatement = strStatement & " " & strWhereClause
+        Do
+            .objCommand.CommandType = adCmdText
+            .objCommand.CommandText = strStatement
+            .objCommand.Execute
+            If Err.Number = 0 Then
+                blnResult = True
+                Exit Do
+            ElseIf SQLErrorProcess(recConnection, "SQLUpdateInto", strTableNameInternal, strStatement, "", True) Then
+                Exit Do
+            End If
+        Loop
+    End With
+    SQLUpdateInto = blnResult
+End Function
+</Option>
+
+
+'
+'SQL Private Routines   Automatically Generated  -  DO NOT MODIFY
+'
+
+Private Function SQLErrorProcess(recConnection As typSQLConnection, strOperation As string, strTableName As String, strStatement As String, Optional strMsg As String = "", Optional blnRetryConnectError As Boolean) As Boolean
+'
+'   Handles SQL errors and checks to see if function should be retried
+'
+    Const lngRetrySleepValue As Long = 1000
+
+    Static blnErrorBeingDisplayed As Boolean
+    Static intConnectFailureRetryCount As Integer
+
+    Dim blnConnectFailure As Boolean
+    Dim intFileNo As Integer
+    Dim lngErrorNo As Long
+    Dim lngErrorNoActual As Long
+    Dim strErrorMsg As String
+    Dim strErrorString As String
+
+    If Err.Number <> 0 Then
+        lngErrorNo = Err.Number
+        strErrorString = Err.Description & "  (" & CStr(Err.Number) & ")"
+    End If
+    Err.Clear
+    <Option>Not VBA
+    Screen.Mousepointer = vbDefault
+    </Option>
+    On Error Resume Next
+    With recConnection.objConnection.Errors
+        If .Count >= 1 Then
+            lngErrorNoActual = .Item(0).NativeError
+        Else
+            lngErrorNoActual = 0
+        End If
+        .Clear
+    End With
+    Err.Clear
+    If (strOperation = "SQLInsert" Or strOperation = "SQLUpdateInto") _
+        And lngErrorNoActual = enumSQLErrorUpdateDupKey Then
+        'native error codes for dup key inserts and updates from all database systems are needed here
+        SQLErrorProcess = True
+        Exit Function
+    End If
+    If lngErrorNo = enumSQLErrorConnectFail _
+        Or lngErrorNo = enumSQLErrorConnectFailAccess _
+        Or lngErrorNo = enumSQLErrorConnectFailPostgres _
+        Or lngErrorNo = enumSQLErrorNetwork Then
+        If blnRetryConnectError And intConnectFailureRetryCount <= enumSQLErrorMaxRetries Then
+            intConnectFailureRetryCount = intConnectFailureRetryCount + 1
+            Call Sleep(lngRetrySleepValue)
+            If SQLConnect(recConnection, False, True) Then
+                Exit Function
+            End If
+        End If
+        blnConnectFailure = True
+    End If
+    intConnectFailureRetryCount = 0
+    If strMsg <> "" Then
+        strErrorString = strErrorString & IIf(strErrorString = "", "", vbCrLf) & strMsg
+    End If
+    m_lngErrorCount = m_lngErrorCount + 1
+    With recConnection
+        m_strError = strErrorString
+        strErrorMsg = "An error occurred during the function '" & strOperation & "'" & _
+            IIf(.strConnectionName = "", "", " on the connection '" & .strConnectionName & "'") & _
+            IIf(strTableName = "", "", " for the table '" & strTableName & "'") & vbCrLf & vbCrLf & _
+            "The specific error was:  " & strErrorString
+        If strStatement <> "" Then
+            strErrorMsg = strErrorMsg & vbCrLf & vbCrLf & "The SQL Statement was:" & vbCrLf & strStatement
+        End If
+    End With
+    If m_blnErrorLog Then
+        intFileNo = FreeFile
+        Open m_strErrorLogFile For Append As #intFileNo
+        <Option>Not VBA
+        With App
+            Print #intFileNo, Format$(Now, "mm/dd/yyyy  hh:nn:ss"); "    "; _
+                .FileDescription; "  "; CStr(.Major); "."; CStr(.Minor); "."; CStr(.Revision); vbCrLf; vbCrLf; _
+                strErrorMsg
+        End With
+        </Option>
+        <Option>VBA
+        Print #intFileNo, Format$(Now, "mm/dd/yyyy  hh:nn:ss"); vbCrLf; vbCrLf; _
+            strErrorMsg
+        </Option>
+        Print #intFileNo, strErrorMsg
+        Print #intFileNo, String$(80, "=")
+        Close #intFileNo
+        Err.Clear
+    End If
+    If Not blnErrorBeingDisplayed Then
+        blnErrorBeingDisplayed = True
+        If blnConnectFailure And strOperation <> "SQLConnectInitial" Then
+            #If enumSQLCallback Then
+            Call Callback_SQLConnectFailure(recConnection)
+            #End If
+        ElseIf m_blnErrorDisplay And Left$(strOperation, 10) <> "SQLConnect" Then
+            #If enumSQLCallback Then
+            Call Callback_MsgboxPreProcess
+            #End If
+            MsgBox "SQL Database Error" & vbCrLf & vbCrLf & strErrorMsg, vbExclamation
+        End If
+        blnErrorBeingDisplayed = False
+    End If
+    SQLErrorProcess = True
+End Function
+
+
+Private Function SQLFieldBuildBegin(recConnection As typSQLConnection, intBuildType As Integer) As Integer
+'
+'   Start an Insert/Update string build operation
+'
+    Dim IntX As Integer
+
+    On Error Resume Next
+    For intX = 0 to UBound(m_recBuild)
+        If Not m_recBuild(intX).blnActive Then
+            Exit For
+        End If
+    Next
+    If intX > UBound(m_recBuild) Then
+        Call SQLErrorProcess(recConnection, "SQLBuild", "", "", "SQL Build Array Overflow")
+	intX = -1
+    Else
+        With m_recBuild(intX)
+            .blnActive = True
+            .intBuildType = intBuildType
+            .strBuildField = ""
+            .strBuildValue = ""
+            .strDatabaseSystem = recConnection.strDatabaseSystem
+            .strEscapeQuote = recConnection.strEscapeQuote
+        End With
+    End If
+    SQLFieldBuildBegin = intX
+    Err.Clear
+End Function
+
+Private Function SQLFieldBuildEnd(intBuildIndex As Integer) As String
+'
+'   End an Insert/Update string build operation
+'
+    On Error Resume Next
+    With m_recBuild(intBuildIndex)
+        Select Case .intBuildType
+            Case Is = enumSQLBuildType.CreateTable
+                SQLFieldBuildEnd = .strBuildValue & IIf(.strBuildField = "", "", "|" & .strBuildField)
+            Case Is = enumSQLBuildType.InsertTable
+                SQLFieldBuildEnd = " (" & .strBuildField & ") VALUES (" & .strBuildValue & ")"
+            Case Is = enumSQLBuildType.UpdateTable
+                SQLFieldBuildEnd = " SET " & .strBuildValue
+        End Select
+        .blnActive = False
+        .strBuildField = ""
+        .strBuildValue = ""
+    End With
+    Err.Clear
+End Function
+
+Private Sub SQLFieldBuildValue(intBuildIndex As Integer, strField As String, strValue As String, Optional strIndex As String = "")
+'
+'   Emit an CreateTable/Insert/Update field/value
+'
+    On Error Resume Next
+    With m_recBuild(intBuildIndex)
+        Select Case .intBuildType
+            Case Is = enumSQLBuildType.CreateTable
+                If strIndex <> "" Then
+                    .strBuildField = .strBuildField & IIf(.strBuildField = "", "", "|") & strIndex
+                End If
+                .strBuildValue = .strBuildValue & IIf(.strBuildValue = "", "", ", ") & strField & " " & strValue
+            Case Is = enumSQLBuildType.InsertTable
+                .strBuildField = .strBuildField & IIf(.strBuildField = "", "", ", ") & strField
+                .strBuildValue = .strBuildValue & IIf(.strBuildValue = "", "", ", ") & strValue
+            Case Is = enumSQLBuildType.UpdateTable
+                .strBuildValue = .strBuildValue & IIf(.strBuildValue = "", "", ", ") & strField & " = " & strValue
+        End Select
+    End With
+    Err.Clear
+End Sub
+
+Private Sub SQLFieldBuildBoolean(intBuildIndex As Integer, strField As String, blnValue As Boolean)
+'
+'   Emit a boolean value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, IIf(blnValue, "true", "false"))
+End Sub
+
+Private Sub SQLFieldBuildCreateTable(intBuildIndex As Integer, strField As String, strFieldType As String, lngLength As Long, blnAutoKey As Boolean, blnPrimary As Boolean, blnIndex As Boolean, blnUnique As Boolean)
+'
+'   Emit a file type for create table statement - customized for the database system
+'
+    Dim strIndex As String
+    Dim strType As String
+
+    On Error Resume Next
+    Select Case LCase$(strFieldType)
+        Case Is = "boolean"
+            Select Case m_recBuild(intBuildIndex).strDatabaseSystem
+                Case Is = enumSQLDatabaseAccess
+                    strType = "YESNO"
+                Case Else
+                    strType = "BOOLEAN"
+            End Select
+        Case Is = "currency"
+            Select Case m_recBuild(intBuildIndex).strDatabaseSystem
+                Case Is = enumSQLDatabaseAccess
+                    strType = "CURRENCY"
+                Case Else
+                    strType = "DOUBLE"
+            End Select
+        Case Is = "date"
+            strType = "DATE"
+        Case Is = "double"
+            strType = "DOUBLE"
+        Case Is = "integer"
+            Select Case m_recBuild(intBuildIndex).strDatabaseSystem
+                Case Is = enumSQLDatabaseAccess
+                    strType = "INTEGER"
+                Case Else
+                    strType = "SHORT"
+            End Select
+        Case Is = "long"
+            Select Case m_recBuild(intBuildIndex).strDatabaseSystem
+                Case Is = enumSQLDatabaseAccess
+                    If blnAutoKey Then
+                        strType = "AUTOINCREMENT"
+                    Else
+                        strType = "LONG"
+                    End If
+                Case Else
+                    strType = "INTEGER"
+            End Select
+        Case Is = "memo"
+            strType = "MEMO"
+        Case Is = "single"
+            strType = "SINGLE"
+        Case Is = "string"
+            strType = "TEXT" & IIf(lngLength > 0, "(" & CStr(lngLength) & ")", "")
+    End Select
+    strIndex = ""
+    If blnPrimary Then
+        strType = strType & " PRIMARY KEY"
+    ElseIf blnIndex Then
+	strIndex = strField
+        If blnUnique Then
+            strIndex = "*" & strIndex
+        End If
+    End If
+    Err.Clear
+    Call SQLFieldBuildValue(intBuildIndex, strField, strType, strIndex)
+End Sub
+
+Private Sub SQLFieldBuildCurrency(intBuildIndex As Integer, strField As String, curValue As Currency)
+'
+'   Emit a currency value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, CStr(curValue))
+End Sub
+
+Private Sub SQLFieldBuildDate(intBuildIndex As Integer, strField As String, datValue As Date)
+'
+'   Emit a date value
+'
+    Dim strValue As String
+
+    On Error Resume Next
+    Select Case m_recBuild(intBuildIndex).strDatabaseSystem
+        Case Is = enumSQLDatabaseOracle
+            'Requires Oracle date/time field
+            strValue = "to_date('" & Format$(datValue, "yyyy/mm/dd:hh:nn:ss am/pm") & "', 'yyyy/mm/dd:hh:mi:ss am')"
+        Case Is = enumSQLDatabaseMySql
+            'Requires MySql DATETIME field (i.e., not DATE, TIME, TIMESTAMP, or YEAR which have no analogs in the generator)
+            strValue = "'" & Format$(datValue, "yyyy-mm-dd hh:nn:ss") & "'"
+        Case Else
+            If datValue = 0 Then
+                strValue = "null"
+            Else
+                strValue = "'" & Format$(datValue, "mmm-dd-yyyy hh:nn:ss") & "'"
+            End If
+    End Select
+    Err.Clear
+    Call SQLFieldBuildValue(intBuildIndex, strField, strValue)
+End Sub
+
+Private Sub SQLFieldBuildDouble(intBuildIndex As Integer, strField As String, dblValue As Double)
+'
+'   Emit a double value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, CStr(dblValue))
+End Sub
+
+Private Sub SQLFieldBuildInteger(intBuildIndex As Integer, strField As String, intValue As Integer)
+'
+'   Emit an integer value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, CStr(intValue))
+End Sub
+
+Private Sub SQLFieldBuildLong(intBuildIndex As Integer, strField As String, lngValue As Long)
+'
+'   Emit a long value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, CStr(lngValue))
+End Sub
+
+Private Sub SQLFieldBuildSingle(intBuildIndex As Integer, strField As String, sngValue As Single)
+'
+'   Emit a single value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, CStr(sngValue))
+End Sub
+
+Private Sub SQLFieldBuildString(intBuildIndex As Integer, strField As String, strValue As String, lngLength As Long)
+'
+'   Emit a string value
+'
+    Call SQLFieldBuildValue(intBuildIndex, strField, "'" & SQLFieldEmitString(strValue, lngLength, m_recBuild(intBuildIndex).strEscapeQuote) & "'")
+End Sub
+
+
+Private Function SQLFieldEmitDate(datValue As Date, strDatabaseSystem As String) As String
+'
+'   Generate a date value string suitable for a query
+'
+    On Error Resume Next
+    Select Case strDatabaseSystem
+        Case Is = enumSQLDatabaseAccess, enumSQLDatabaseSqlServer
+            SQLFieldEmitDate = "#" & Format$(datValue, "mm/dd/yyyy") & "#"
+        Case Is = enumSQLDatabaseMySql
+            SQLFieldEmitDate = "'" & Format$(datValue, "yyyy-mm-dd") & "'"
+        Case Else
+            SQLFieldEmitDate = "'" & Format$(datValue, "mm/dd/yyyy") & "'"
+    End Select
+End Function
+
+Private Function SQLFieldEmitString(strString As String, lngLength As Long, strEscapeQuote As String) As String
+'
+'   Generate a string value suitable for database insertion, update or query purposes
+'
+    Dim lngX As Long
+    Dim strData As String
+
+    On Error Resume Next
+    If lngLength > 0 And Len(strData) > lngLength Then
+        strData = Left$(strData, lngLength)
+    End If
+    If strEscapeQuote = "" Then
+        strData = Replace(strString, "'", "")
+    Else
+        strData = strString
+        If strEscapeQuote <> "'" Then
+            lngX = 1
+            Do
+                lngX = InStr(lngX, strData, strEscapeQuote)
+                If lngX > 0 Then
+                    strData = Left$(strData, lngX - 1) & strEscapeQuote & Mid$(strData, lngX)
+                    lngX = lngX + 2
+                End If
+            Loop Until lngX = 0
+        End If
+        lngX = 1
+        Do
+            lngX = InStr(lngX, strData, "'")
+            If lngX > 0 Then
+                strData = Left$(strData, lngX - 1) & strEscapeQuote & Mid$(strData, lngX)
+                lngX = lngX + 2
+            End If
+        Loop Until lngX = 0
+    End If
+    Err.Clear
+    SQLFieldEmitString = strData
+End Function
+
+
+Private Function SQLFieldGetBoolean(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Boolean
+'
+'   Returns the value for a boolean field
+'
+    On Error Resume Next
+    SQLFieldGetBoolean = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetBoolean", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetBoolean = False
+    End If
+End Function
+
+Private Function SQLFieldGetCurrency(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Currency
+'
+'   Returns the value for a currency field
+'
+    On Error Resume Next
+    SQLFieldGetCurrency = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetCurrency", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetCurrency = 0
+    End If
+End Function
+
+Private Function SQLFieldGetDate(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Date
+'
+'   Returns the value for a date field
+'
+    On Error Resume Next
+    SQLFieldGetDate = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetDate", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetDate = 0
+    End If
+End Function
+
+Private Function SQLFieldGetDouble(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Double
+'
+'   Returns the value for a double field
+'
+    On Error Resume Next
+    SQLFieldGetDouble = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetDouble", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetDouble = 0
+    End If
+End Function
+
+Private Function SQLFieldGetInteger(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Integer
+'
+'   Returns the value for a integer field
+'
+    On Error Resume Next
+    SQLFieldGetInteger = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetInteger", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetInteger = 0
+    End If
+End Function
+
+Private Function SQLFieldGetLong(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Long
+'
+'   Returns the value for a long field
+'
+    On Error Resume Next
+    SQLFieldGetLong = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetLong", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetLong = 0
+    End If
+End Function
+
+Private Function SQLFieldGetSingle(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As Single
+'
+'   Returns the value for a single field
+'
+    On Error Resume Next
+    SQLFieldGetSingle = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetSingle", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetSingle = 0
+    End If
+End Function
+
+Private Function SQLFieldGetString(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String) As String
+'
+'   Returns the value for a string field
+'
+    On Error Resume Next
+    SQLFieldGetString = objRecordset(strFieldName)
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldGetString", strTableNameInternal, "Get " & strFieldName)
+        End If
+        SQLFieldGetString = ""
+    End If
+End Function
+
+<Option>Update
+
+Private Sub SQLFieldPutBoolean(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Boolean)
+'
+'   Sets the value for a boolean field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutBoolean", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutCurrency(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Currency)
+'
+'   Sets the value for a Currency field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutCurrency", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutDate(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Date)
+'
+'   Sets the value for a Date field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutDate", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutDouble(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Double)
+'
+'   Sets the value for a Double field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutDouble", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutInteger(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Integer)
+'
+'   Sets the value for a Integer field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutInteger", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutLong(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Long)
+'
+'   Sets the value for a Long field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutLong", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutSingle(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As Single)
+'
+'   Sets the value for a Single field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutSingle", strTableNameInternal, "Put " & strFieldName, "Value: " & CStr(varValue))
+        End If
+    End If
+End Sub
+
+Private Sub SQLFieldPutString(recConnection As typSQLConnection, objRecordset As ADODB.Recordset, strTableNameInternal As String, strFieldName As String, varValue As String)
+'
+'   Sets the value for a String field
+'
+    On Error Resume Next
+    objRecordset(strFieldName) = varValue
+    If Err.Number <> 0 Then
+        If Err.Number = enumSQLErrorNullValue Then
+            Err.Clear
+        Else
+            Call SQLErrorProcess(recConnection, "SQLFieldPutString", strTableNameInternal, "Put " & strFieldName, "Value: " & varValue)
+        End If
+    End If
+End Sub
+</Option>
+
+Private Function SQLGetCount(recConnection As typSQLConnection, strTableNameExternal As String, strWhereClause As String) As Long
+'
+'   Returns the count of records from a table
+'
+    Dim objGet As ADODB.RecordSet
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        strStatement = "SELECT COUNT(*) AS RecordCount FROM " & .strServerPrefix & strTableNameExternal
+        If strWhereClause <> "" Then
+            strStatement = strStatement & " WHERE " & strWhereClause
+        End If
+        Set objGet = New ADODB.RecordSet
+        objGet.Open strStatement, .objConnection, adOpenForwardOnly, adLockReadOnly
+    End With
+    If Err.Number = 0 Then
+        SQLGetCount = objGet("RecordCount")
+        objGet.Close
+    Else
+        Err.Clear
+    End If
+    Set objGet = Nothing
+End Function
+
+Private Function SQLGetKeyValue(strKeyFieldName As String, recConnection As typSQLConnection, strTableNameExternal As String) As Long
+'
+'   Returns the new key value assigned after an insert on a table with an autonumber field
+'
+    Dim objGet As ADODB.RecordSet
+    Dim strStatement As String
+
+    On Error Resume Next
+    With recConnection
+        strStatement = "SELECT MAX(" & strKeyFieldName & ") AS MaxID FROM " & .strServerPrefix & strTableNameExternal
+        Set objGet = New ADODB.RecordSet
+        objGet.Open strStatement, .objConnection, adOpenForwardOnly, adLockReadOnly
+    End With
+    If Err.Number = 0 Then
+        SQLGetKeyValue = objGet("MaxID")
+        objGet.Close
+    Else
+        Err.Clear
+    End If
+    Set objGet = Nothing
+End Function
+
+Private Function SQLOpen(recConnection As typSQLConnection, strDSN As String, strConnectString As String, strServer As String, strDatabase As String, strDatabasePassword As String, strUserName As String, strPassword As String, strDatabaseSystem As String, strRecordSetParams As String, intConnectTimeout As Integer, intCommandTimeout As Integer, blnCursorClient As Boolean) As Boolean
+'
+'   Opens a SQL Connection
+'
+    Const enumDataSourceName As String = "DSN="
+    Const enumDatabaseText As String = "<db>"
+    Const enumDatabasePasswordText As String = "<dbpwd>"
+    Const enumPasswordText As String = "<pwd>"
+    Const enumServerText As String = "<srv>"
+    Const enumUserNameText As String = "<uid>"
+
+    Dim intX As Integer
+
+    On Error Resume Next
+    If m_strErrorLogFile = "" Then
+        <Option>Not VBA
+        m_strErrorLogFile = App.Path & "\" & enumSQLErrorLogFile
+        </Option>
+        <Option>VBA
+        m_strErrorLogFile = Application.Path & "\" & enumSQLErrorLogFile
+        </Option>
+    End If
+    With recConnection
+        m_blnErrorDisplay = True
+        .intOperationType = enumSQLOperationType.ConnectOperation
+        .intCommandTimeout = intCommandTimeout
+        .intConnectTimeout = intConnectTimeout
+        .lngCursorLocation = adUseServer
+        .lngCursorDefault = adOpenKeyset
+        .strServer = strServer
+        .strDatabase = strDatabase
+        .strDatabasePassword = strDatabasePassword
+        .strUserName = strUserName
+        .strPassword = strPassword
+        If strDSN <> "" Then
+            .blnDSN = True
+            .strConnectString = enumDataSourceName & strDSN
+        Else
+            .blnDSN = False
+            .strConnectString = Replace(LCase$(strConnectString), enumServerText, strServer, , , vbTextCompare)
+            .strConnectString = Replace(LCase$(.strConnectString), enumDatabaseText, strDatabase, , , vbTextCompare)
+            .strConnectString = Replace(LCase$(.strConnectString), enumUserNameText, strUserName, , , vbTextCompare)
+            .strConnectErrorString = .strConnectString
+            .strConnectString = Replace(LCase$(.strConnectString), enumDatabasePasswordText, strDatabasePassword, , , vbTextCompare)
+            .strConnectString = Replace(LCase$(.strConnectString), enumPasswordText, strPassword, , , vbTextCompare)
+        End If
+        If blnCursorClient Then
+            .lngCursorLocation = adUseClient
+        End If
+        If strDatabaseSystem = "" Then
+            .strDatabaseSystem = enumSQLDatabaseSqlServer
+        Else
+            .strDatabaseSystem = LCase$(strDatabaseSystem)
+        End If
+        .strServerPrefix = ""
+        .strRecordSetParams = strRecordSetParams
+        .strEscapeQuote = ""
+        Select Case .strDatabaseSystem
+            Case Is = enumSQLDatabaseAccess
+                .strEscapeQuote = "'"
+                intX = InStrRev(strDatabase, "\")
+                If intX > 0 Then
+                    .strDatabase = Mid$(strDatabase, intX + 1)
+                Else
+                    .strDatabase = strDatabase
+                End If
+                .strFileName = strDatabase
+            Case Is = enumSQLDatabaseMySql
+                .strEscapeQuote = "\"
+            Case Is = enumSQLDatabaseOracle
+                .lngCursorDefault = adOpenStatic
+                .strServerPrefix = strServer & "."
+            Case Is = enumSQLDatabasePostgresQL
+                .strEscapeQuote = "\"
+        End Select
+        Err.Clear
+    End With
+    SQLOpen = SQLConnect(recConnection, True)
+End Function
+
+<Table>
+
+'
+'SQL [{TableNameExternal}] Table Public Routines   Automatically Generated  -  DO NOT MODIFY
+'
+<Option>AddNew
+<Logic>Add
+<Buffer>
+Public Function SQLAddNew[{TableNameInternal}][{TableBufferID}]() As Boolean
+    SQLAddNew[{TableNameInternal}][{TableBufferID}] = SQLAddNew(g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], "[{TableNameInternal}]", "[{TableBufferID}]")
+End Function
+
+</Buffer>
+</Logic>
+</Option>
+<Option>Clear
+<Logic>AddModify
+Public Sub SQLClear[{TableNameInternal}](recBuffer As typTable[{TableNameInternal}])
+    On Error Resume Next
+    With recBuffer
+        <Field>
+        .[{FieldNameInternal}] = [{FieldClear}]
+        </Field>
+    End With
+End Sub
+
+</Logic>
+</Option>
+<Buffer>
+Public Sub SQLClose[{TableNameInternal}][{TableBufferID}]()
+    Call SQLCloseRecordSet(g_objRecordset[{TableNameInternal}][{TableBufferID}])
+End Sub
+
+</Buffer>
+<Logic>Create
+Public Function SQLCreateTable[{TableNameInternal}]() As Boolean
+    Dim intBuildIndex As Integer
+
+    On Error Resume Next
+    intBuildIndex = SQLFieldBuildBegin(g_recConnection[{TableConnection}], enumSQLBuildType.CreateTable)
+    If intBuildIndex >= 0 Then
+        <Field>
+        Call SQLFieldBuildCreateTable(intBuildIndex, "[{FieldNameExternal}]", "[{FieldTypeActual}]", [{FieldLength}], [{FieldAutoKey}], [{FieldPrimary}], [{FieldIndex}], [{FieldUnique}])
+        </Field>
+        SQLCreateTable[{TableNameInternal}] = SQLCreateTable(g_recConnection[{TableConnection}], "[{TableNameInternal}]", "[{TableNameExternal}]", SQLFieldBuildEnd(intBuildIndex))
+    End If
+End Function
+
+</Logic>
+<Option>Delete
+<Logic>Delete
+<Buffer>
+Public Function SQLDelete[{TableNameInternal}][{TableBufferID}](Optional blnCriticalWrite As Boolean = False) As Boolean
+    SQLDelete[{TableNameInternal}][{TableBufferID}] = SQLDelete(g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], "[{TableNameInternal}]", blnCriticalWrite)
+End Function
+
+</Buffer>
+</Logic>
+</Option>
+<Option>DeleteFrom
+<Logic>Delete
+Public Function SQLDeleteFrom[{TableNameInternal}](strWhereClause As String, Optional blnCriticalWrite As Boolean = False) As Boolean
+    SQLDeleteFrom[{TableNameInternal}] = SQLDeleteFrom(g_recConnection[{TableConnection}], "[{TableNameInternal}]", "[{TableNameExternal}]", strWhereClause, blnCriticalWrite)
+End Function
+
+</Logic>
+</Option>
+Public Sub SQLFetch[{TableNameInternal}](recConnection As typSQLConnection, objRecordset As ADODB.Recordset, recBuffer As typTable[{TableNameInternal}])
+    On Error Resume Next
+    recConnection.intOperationType = enumSQLOperationType.ReadOperation
+    With recBuffer
+        <Field>
+        .[{FieldNameInternal}] = SQLFieldGet[{FieldType}](recConnection, objRecordset, "[{TableNameInternal}]", "[{FieldNameExternal}]")
+        </Field>
+    End With
+End Sub
+
+<Option>Insert
+<Logic>Add
+Public Function SQLInsert[{TableNameInternal}](recBuffer As typTable[{TableNameInternal}], Optional blnFetchKey As Boolean = False, Optional blnInsertAutoKeyField As Boolean = False, Optional blnCriticalWrite As Boolean = False) As Boolean
+    Dim strSQLStatement As String
+
+    On Error Resume Next
+    strSQLStatement = SQLStatementBuild[{TableNameInternal}](g_recConnection[{TableConnection}], recBuffer, enumSQLBuildType.InsertTable, blnInsertAutoKeyField)
+    If strSQLStatement <> "" Then
+        If SQLInsert(g_recConnection[{TableConnection}], "[{TableNameInternal}]", "[{TableNameExternal}]", strSQLStatement, blnCriticalWrite) Then
+            <Field>
+            <FieldAutoKey>
+            If blnFetchKey Then
+                recBuffer.[{FieldNameInternal}] = SQLGetKeyValue("[{FieldNameExternal}]", g_recConnection[{TableConnection}], "[{TableNameExternal}]")
+            End If
+            </FieldAutoKey>
+            </Field>
+            SQLInsert[{TableNameInternal}] = True
+        End If
+    End If
+End Function
+
+</Logic>
+</Option>
+<Buffer>
+Public Function SQLNext[{TableNameInternal}][{TableBufferID}]() As Boolean
+    On Error Resume Next
+    If SQLNext(g_objRecordset[{TableNameInternal}][{TableBufferID}]) Then
+        Call SQLFetch[{TableNameInternal}](g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], g_rec[{TableNameInternal}][{TableBufferID}])
+        SQLNext[{TableNameInternal}][{TableBufferID}] = True
+    End If
+End Function
+
+</Buffer>
+<Option>Parameter
+Public Function SQLParameter[{TableNameInternal}](strSQLStatement As String, Optional intOperationType As Integer = 0)
+    SQLParameter[{TableNameInternal}] = SQLParameter(g_recConnection[{TableConnection}], g_objCommand[{TableNameInternal}], "[{TableNameInternal}]", strSQLStatement, intOperationType)
+End Function
+
+</Option>
+<Option>RecordCount
+<Logic>Add
+Public Function SQLRecordCount[{TableNameInternal}](strWhereClause As String) As Long
+    SQLRecordCount[{TableNameInternal}] = SQLGetCount(g_recConnection[{TableConnection}], "[{TableNameExternal}]", strWhereClause)
+End Function
+
+</Logic>
+</Option>
+<Option>Search
+<Buffer>
+Public Function SQLSearch[{TableNameInternal}][{TableBufferID}](strSQLSearch As String, blnForward As Boolean, blnReposition As Boolean) As Boolean
+    On Error Resume Next
+    If SQLSearch(g_objRecordset[{TableNameInternal}][{TableBufferID}], strSQLSearch, blnForward, blnReposition) Then
+        Call SQLFetch[{TableNameInternal}](g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], g_rec[{TableNameInternal}][{TableBufferID}])
+        SQLSearch[{TableNameInternal}][{TableBufferID}] = True
+    End If
+End Function
+
+</Buffer>
+</Option>
+<Buffer>
+Public Function SQLSelect[{TableNameInternal}][{TableBufferID}](strWhereClause As String, Optional lngTopCount As Long = 0, Optional strRecordSetParams As String = "") As Boolean
+    On Error Resume Next
+    If SQLSelect(g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], "[{TableNameInternal}]", "[{TableNameExternal}]", strWhereClause, lngTopCount, strRecordSetParams) Then
+        Call SQLFetch[{TableNameInternal}](g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], g_rec[{TableNameInternal}][{TableBufferID}])
+        SQLSelect[{TableNameInternal}][{TableBufferID}] = True
+    End If
+End Function
+
+</Buffer>
+<Option>Insert UpdateInto
+<Logic>AddModify
+Public Function SQLStatementBuild[{TableNameInternal}](recConnection As typSQLConnection, recBuffer As typTable[{TableNameInternal}], intBuildType As Integer, Optional blnAutoKeyField As Boolean = False, Optional blnCriticalWrite As Boolean = False) As String
+    Dim intBuildIndex As Integer
+
+    On Error Resume Next
+    intBuildIndex = SQLFieldBuildBegin(recConnection, intBuildType)
+    If intBuildIndex >= 0 Then
+        With recBuffer
+            <Field>
+            <Option>Not Parameter
+            <FieldAutoKey>
+            If blnAutoKeyField Then
+                <FieldType>String Memo
+                Call SQLFieldBuildString(intBuildIndex, "[{FieldNameExternal}]", .[{FieldNameInternal}], [{FieldLength}])
+                </FieldType>
+                <FieldType>Not String Memo
+                Call SQLFieldBuild[{FieldType}](intBuildIndex, "[{FieldNameExternal}]", .[{FieldNameInternal}])
+                </FieldType>
+            End If
+            </FieldAutoKey>
+            <FieldNotAutoKey>
+            <FieldType>String Memo
+            Call SQLFieldBuildString(intBuildIndex, "[{FieldNameExternal}]", .[{FieldNameInternal}], [{FieldLength}])
+            </FieldType>
+            <FieldType>Not String Memo
+            Call SQLFieldBuild[{FieldType}](intBuildIndex, "[{FieldNameExternal}]", .[{FieldNameInternal}])
+            </FieldType>
+            </FieldNotAutoKey>
+            </Option>
+            <Option>Parameter
+            <FieldAutoKey>
+            If blnAutoKeyField Then
+                <FieldType>String Memo
+                objParam[{TableNameInternal}][{FieldNameInternal}].Size = Len(.[{FieldNameInternal}])
+                </FieldType>
+                <FieldType>Boolean
+                objParam[{TableNameInternal}][{FieldNameInternal}].Value = IIf(.[{FieldNameInternal}] = True, 1, 0)
+                </FieldType>
+                <FieldType>Not Boolean
+                objParam[{TableNameInternal}][{FieldNameInternal}].Value = .[{FieldNameInternal}]
+                </FieldType>
+            End If
+            </FieldAutoKey>
+            <FieldNotAutoKey>
+            <FieldType>String Memo
+            objParam[{TableNameInternal}][{FieldNameInternal}].Size = Len(.[{FieldNameInternal}])
+            </FieldType>
+            <FieldType>Boolean
+            objParam[{TableNameInternal}][{FieldNameInternal}].Value = IIf(.[{FieldNameInternal}] = True, 1, 0)
+            </FieldType>
+            <FieldType>Not Boolean
+            objParam[{TableNameInternal}][{FieldNameInternal}].Value = .[{FieldNameInternal}]
+            </FieldType>
+            </FieldNotAutoKey>
+            </Option>
+            </Field>
+        End With
+        SQLStatementBuild[{TableNameInternal}] = SQLFieldBuildEnd(intBuildIndex)
+    End If
+End Function
+
+</Logic>
+</Option>
+<Option>Update
+<Logic>Modify
+<Buffer>
+Public Function SQLUpdate[{TableNameInternal}][{TableBufferID}](Optional blnCriticalWrite As Boolean = False) As Boolean
+    With g_rec[{TableNameInternal}][{TableBufferID}]
+        <Field>
+        <FieldNotAutoKey>
+        Call SQLFieldPut[{FieldType}](g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], "[{TableNameInternal}]", "[{FieldNameExternal}]", .[{FieldNameInternal}])
+        </FieldNotAutoKey>
+        </Field>
+    End With
+    SQLUpdate[{TableNameInternal}][{TableBufferID}] = SQLUpdate(g_recConnection[{TableConnection}], g_objRecordset[{TableNameInternal}][{TableBufferID}], "[{TableNameInternal}]", "[{TableBufferID}]", blnCriticalWrite)
+End Function
+
+</Buffer>
+</Logic>
+</Option>
+<Option>UpdateInto
+<Logic>Modify
+Public Function SQLUpdateInto[{TableNameInternal}](recBuffer As typTable[{TableNameInternal}], strWhereClause As String, Optional blnUpdateAutoKeyField As Boolean = False, Optional blnCriticalWrite As Boolean = False) As Boolean
+    Dim strSQLStatement As String
+
+    On Error Resume Next
+    strSQLStatement = SQLStatementBuild[{TableNameInternal}](g_recConnection[{TableConnection}], recBuffer, enumSQLBuildType.UpdateTable, blnUpdateAutoKeyField)
+    If strSQLStatement <> "" Then
+        SQLUpdateInto[{TableNameInternal}] = SQLUpdateInto(g_recConnection[{TableConnection}], "[{TableNameInternal}]", "[{TableNameExternal}]", strSQLStatement, strWhereClause, blnCriticalWrite)
+    End If
+End Function
+
+</Logic>
+</Option>
+</Table>
+'
+'SQL Query Routines   Automatically Generated  -  DO NOT MODIFY
+'
+<QueryDelete>
+Public Function SQLQueryDelete[{QueryTableNameInternal}]_[{QueryName}]([{QueryParam}]Optional blnCriticalWrite As Boolean = False) As Boolean
+    Dim strSQL As String
+
+    On Error Resume Next
+    strSQL = _
+        [{QueryString}]
+    SQLQueryDelete[{QueryTableNameInternal}]_[{QueryName}] = SQLDeleteFrom(g_recConnection[{QueryConnection}], "[{QueryTableNameInternal}]", "[{QueryTableNameExternal}]", strSQL, blnCriticalWrite)
+End Function
+
+</QueryDelete>
+<QuerySelect>
+Public Function SQLQuerySelect[{QueryTableNameInternal}][{QueryBufferID}]_[{QueryName}]([{QueryParam}]Optional lngTopCount As Long = 0, Optional strRecordSetParams As String = "") As Boolean
+    Dim strSQL As String
+
+    On Error Resume Next
+    strSQL = _
+        [{QueryString}]
+    SQLQuerySelect[{QueryTableNameInternal}][{QueryBufferID}]_[{QueryName}] = SQLSelect[{QueryTableNameInternal}][{QueryBufferID}](strSQL, lngTopCount, strRecordSetParams)
+End Function
+
+</QuerySelect>
+<QuerySet>
+Public Function SQLQuerySet[{QueryTableNameInternal}]_[{QueryName}]([{QueryParam}]Optional blnCriticalWrite As Boolean = False) As Boolean
+    Dim strSQL As String
+
+    On Error Resume Next
+    strSQL = _
+        [{QueryString}]
+    SQLQuerySet[{QueryTableNameInternal}]_[{QueryName}] = SQLCommand[{QueryConnection}](strSQL, , , IIf(blnCriticalWrite, enumSQLOperationType.CriticalWriteOperation, enumSQLOperationType.WriteOperation))
+End Function
+
+</QuerySet>
+<QueryUpdate>
+Public Function SQLQueryUpdate[{QueryTableNameInternal}]_[{QueryName}](recBuffer As typTable[{QueryTableNameInternal}], [{QueryParam}]Optional blnCriticalWrite As Boolean = False) As Boolean
+    Dim strSQL As String
+
+    On Error Resume Next
+    strSQL = _
+        [{QueryString}]
+    SQLQueryUpdate[{QueryTableNameInternal}]_[{QueryName}] = SQLUpdateInto[{QueryTableNameInternal}](recBuffer, strSQL, blnCriticalWrite)
+End Function
+
+</QueryUpdate>
+'
+'End of Automatically Generated Code
+'
